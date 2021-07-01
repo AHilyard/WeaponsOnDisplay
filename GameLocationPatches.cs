@@ -259,7 +259,7 @@ namespace WeaponsOnDisplay
 								return true;
 							}
 
-							if (who.CurrentTool != null && who.CurrentTool is MeleeWeapon && current7.performObjectDropInAction(who.CurrentTool, probe: false, who))
+							if (who.CurrentTool != null && (who.CurrentTool is MeleeWeapon || who.CurrentTool is Slingshot) && current7.performObjectDropInAction(who.CurrentTool, probe: false, who))
 							{
 								return true;
 							}
