@@ -1,4 +1,3 @@
-using Microsoft.Xna.Framework;
 using StardewValley;
 using StardewValley.Tools;
 
@@ -27,7 +26,7 @@ namespace WeaponsOnDisplay
 
 		public SlingshotProxy() {}
 
-		public override Item getOne()
+		protected override Item GetOneNew()
 		{
 			return Weapon.getOne();
 		}
@@ -37,7 +36,7 @@ namespace WeaponsOnDisplay
 			return false;
 		}
 
-		public override void performRemoveAction(Vector2 tileLocation, GameLocation environment)
+		public override void performRemoveAction()
 		{
 			// Do nothing.
 		}

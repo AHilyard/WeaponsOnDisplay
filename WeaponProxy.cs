@@ -1,4 +1,4 @@
-using Microsoft.Xna.Framework;
+using StardewModdingAPI;
 using StardewValley;
 using StardewValley.Tools;
 
@@ -27,7 +27,7 @@ namespace WeaponsOnDisplay
 
 		public WeaponProxy() {}
 
-		public override Item getOne()
+		protected override Item GetOneNew()
 		{
 			return Weapon.getOne();
 		}
@@ -35,11 +35,6 @@ namespace WeaponsOnDisplay
 		public override bool performDropDownAction(Farmer who)
 		{
 			return false;
-		}
-
-		public override void performRemoveAction(Vector2 tileLocation, GameLocation environment)
-		{
-			// Do nothing.
 		}
 	}
 }
