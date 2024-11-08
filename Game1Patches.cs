@@ -7,6 +7,7 @@ using StardewValley.Locations;
 using StardewValley.Objects;
 using System.Collections.Generic;
 using StardewValley.GameData.Objects;
+using StardewValley.TerrainFeatures;
 
 namespace WeaponsOnDisplay
 {
@@ -24,6 +25,92 @@ namespace WeaponsOnDisplay
 					Game1.questionChoices.Add(questions[i]);
 				}
 			}
+		}
+
+		private static bool tryToPlaceItem(GameLocation location, Item item, int x, int y)
+		{
+			if (item == null)
+			{
+				return false;
+			}
+			Vector2 tileLocation = new Vector2((float)(x / 64), (float)(y / 64));
+			if (Utility.playerCanPlaceItemHere(location, item, x, y, Game1.player, false))
+			{
+				if (item is Furniture)
+				{
+					Game1.player.ActiveObject = null;
+				}
+				if (item is Object objectItem && objectItem.placementAction(location, x, y, Game1.player))
+				{
+					Game1.player.reduceActiveItemByOne();
+				}
+				else
+				{
+					if (item is Furniture furniture)
+					{
+						Game1.player.ActiveObject = furniture;
+					}
+					else if (item is Wallpaper)
+					{
+						return false;
+					}
+				}
+				return true;
+			}
+			if (Utility.isPlacementForbiddenHere(location) && item != null && item.isPlaceable())
+			{
+				if (Game1.didPlayerJustClickAtAll(true))
+				{
+					Game1.showRedMessage(Game1.content.LoadString("Strings\\StringsFromCSFiles:Object.cs.13053"), true);
+				}
+			}
+			else
+			{
+				if (item is Furniture furniture && Game1.didPlayerJustLeftClick(true))
+				{
+					switch (furniture.GetAdditionalFurniturePlacementStatus(location, x, y, Game1.player))
+					{
+						case 1:
+							Game1.showRedMessage(Game1.content.LoadString("Strings\\StringsFromCSFiles:Furniture.cs.12629"), true);
+							break;
+						case 2:
+							Game1.showRedMessage(Game1.content.LoadString("Strings\\StringsFromCSFiles:Furniture.cs.12632"), true);
+							break;
+						case 3:
+							Game1.showRedMessage(Game1.content.LoadString("Strings\\StringsFromCSFiles:Furniture.cs.12633"), true);
+							break;
+						case 4:
+							Game1.showRedMessage(Game1.content.LoadString("Strings\\StringsFromCSFiles:Furniture.cs.12632"), true);
+							break;
+					}
+				}
+			}
+
+			if (item.Category == -19 && location.terrainFeatures.TryGetValue(tileLocation, out TerrainFeature terrainFeature))
+			{
+				if (terrainFeature is HoeDirt dirt)
+				{
+					switch (dirt.CheckApplyFertilizerRules(item.QualifiedItemId))
+					{
+						case HoeDirtFertilizerApplyStatus.HasThisFertilizer:
+							return false;
+						case HoeDirtFertilizerApplyStatus.HasAnotherFertilizer:
+							if (Game1.didPlayerJustClickAtAll(true))
+							{
+								Game1.showRedMessage(Game1.content.LoadString("Strings\\StringsFromCSFiles:HoeDirt.cs.13916-2"), true);
+							}
+							return false;
+						case HoeDirtFertilizerApplyStatus.CropAlreadySprouted:
+							if (Game1.didPlayerJustClickAtAll(true))
+							{
+								Game1.showRedMessage(Game1.content.LoadString("Strings\\StringsFromCSFiles:HoeDirt.cs.13916"), true);
+							}
+							return false;
+					}
+				}
+			}
+			Utility.playerCanPlaceItemHere(location, item, x, y, Game1.player, true);
+			return false;
 		}
 
 		public static bool pressActionButton_Prefix(KeyboardState currentKBState, MouseState currentMouseState, GamePadState currentPadState, ref bool __result)
@@ -181,10 +268,6 @@ namespace WeaponsOnDisplay
 				Game1.oldKBState = currentKBState;
 				Game1.oldMouseState = Game1.input.GetMouseState();
 				Game1.oldPadState = currentPadState;
-				if (Game1.questOfTheDay != null && Game1.questOfTheDay.accepted.Value && Game1.questOfTheDay is SocializeQuest)
-				{
-					((SocializeQuest)Game1.questOfTheDay).checkIfComplete(null, -1, -1);
-				}
 				__result = false;
 				return false;
 			}
@@ -200,7 +283,7 @@ namespace WeaponsOnDisplay
 							__result = true;
 							return false;
 						}
-						if (Game1.didPlayerJustRightClick(ignoreNonMouseHeldInput: true) && Game1.currentLocation.CheckInspectAnimal(mousePosition, Game1.player))
+						if (Game1.didPlayerJustRightClick(true) && Game1.currentLocation.CheckInspectAnimal(mousePosition, Game1.player))
 						{
 							__result = true;
 							return false;
@@ -219,9 +302,10 @@ namespace WeaponsOnDisplay
 				bool was_character_at_grab_tile = false;
 				if (Game1.eventUp && !Game1.isFestival())
 				{
-					if (Game1.CurrentEvent != null)
+					Event currentEvent = Game1.CurrentEvent;
+					if (currentEvent != null)
 					{
-						Game1.CurrentEvent.receiveActionPress((int)grabTile.X, (int)grabTile.Y);
+						currentEvent.receiveActionPress((int)grabTile.X, (int)grabTile.Y);
 					}
 					Game1.oldKBState = currentKBState;
 					Game1.oldMouseState = Game1.input.GetMouseState();
@@ -284,13 +368,13 @@ namespace WeaponsOnDisplay
 					}
 					
 					Vector2 valid_position = Utility.GetNearbyValidPlacementPosition(Game1.player, Game1.currentLocation, placedItem, (int)grabTile.X * 64 + 32, (int)grabTile.Y * 64 + 32);
-					if (!Game1.isCheckingNonMousePlacement && placedItem is Wallpaper && Utility.tryToPlaceItem(Game1.currentLocation, placedItem, (int)cursorTile.X * 64, (int)cursorTile.Y * 64))
+					if (!Game1.isCheckingNonMousePlacement && placedItem is Wallpaper && tryToPlaceItem(Game1.currentLocation, placedItem, (int)cursorTile.X * 64, (int)cursorTile.Y * 64))
 					{
 						Game1.isCheckingNonMousePlacement = false;
 						__result = true;
 						return false;
 					}
-					if (Utility.tryToPlaceItem(Game1.currentLocation, placedItem, (int)valid_position.X, (int)valid_position.Y))
+					if (tryToPlaceItem(Game1.currentLocation, placedItem, (int)valid_position.X, (int)valid_position.Y))
 					{
 						Game1.isCheckingNonMousePlacement = false;
 						__result = true;
@@ -404,21 +488,7 @@ namespace WeaponsOnDisplay
 					Game1.player.FarmerSprite.setCurrentSingleAnimation(304);
 					if (Game1.objectData.TryGetValue(Game1.player.ActiveObject.ItemId, out ObjectData objectData))
 					{
-						GameLocation currentLocation = Game1.currentLocation;
-						string question;
-						if (objectData.IsDrink)
-						{
-							Object.PreserveType? value = Game1.player.ActiveObject.preserve.Value;
-							Object.PreserveType preserveType = Object.PreserveType.Pickle;
-							if (!(value.GetValueOrDefault() == preserveType & value != null))
-							{
-								question = Game1.content.LoadString("Strings\\StringsFromCSFiles:Game1.cs.3159", Game1.player.ActiveObject.DisplayName);
-								goto IL_BFB;
-							}
-						}
-						question = Game1.content.LoadString("Strings\\StringsFromCSFiles:Game1.cs.3160", Game1.player.ActiveObject.DisplayName);
-					IL_BFB:
-						currentLocation.createQuestionDialogue(question, Game1.currentLocation.createYesNoResponses(), "Eat");
+						Game1.currentLocation.createQuestionDialogue((objectData.IsDrink && Game1.player.ActiveObject.preserve.Value.GetValueOrDefault() != Object.PreserveType.Pickle) ? Game1.content.LoadString("Strings\\StringsFromCSFiles:Game1.cs.3159", Game1.player.ActiveObject.DisplayName) : Game1.content.LoadString("Strings\\StringsFromCSFiles:Game1.cs.3160", Game1.player.ActiveObject.DisplayName), Game1.currentLocation.createYesNoResponses(), "Eat");
 					}
 					Game1.oldKBState = currentKBState;
 					Game1.oldMouseState = Game1.input.GetMouseState();

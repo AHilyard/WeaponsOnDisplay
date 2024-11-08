@@ -1,4 +1,5 @@
-using StardewModdingAPI;
+using System.Xml.Serialization;
+using Netcode;
 using StardewValley;
 using StardewValley.Tools;
 
@@ -6,30 +7,48 @@ namespace WeaponsOnDisplay
 {
 	public class WeaponProxy : Object
 	{
-		public MeleeWeapon Weapon { get; set; } = null;
+		private readonly NetRef<MeleeWeapon> weapon = new NetRef<MeleeWeapon>();
+		public MeleeWeapon Weapon
+		{
+			get
+			{
+				return weapon.Value;
+			}
+
+			set
+			{
+				weapon.Value = value;
+			}
+		}
 
 		public new int ParentSheetIndex
 		{
-			get { return Weapon?.ParentSheetIndex ?? 0; }
+			get { return weapon.Value?.ParentSheetIndex ?? 0; }
 			set
 			{
-				if (Weapon != null)
+				if (weapon.Value != null)
 				{
-					Weapon.ParentSheetIndex = value;
+					weapon.Value.ParentSheetIndex = value;
 				}
 			}
 		}
 
 		public WeaponProxy(MeleeWeapon weapon)
 		{
-			Weapon = weapon;
+			this.weapon.Value = weapon;
 		}
 
 		public WeaponProxy() {}
 
+		protected override void initNetFields()
+		{
+			base.initNetFields();
+			base.NetFields.AddField(weapon, "weapon");
+		}
+
 		protected override Item GetOneNew()
 		{
-			return Weapon.getOne();
+			return weapon.Value?.getOne();
 		}
 
 		public override bool performDropDownAction(Farmer who)
